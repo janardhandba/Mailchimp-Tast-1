@@ -1,0 +1,42 @@
+#!/bin/bash
+
+####################################################################################################################################
+#This script will monitor unauthorized attempts to access a database and trigger a notification in case of too many (attempts) >10 #
+#Created by: Janardhan Reddy Dumpa                                                                                                 #
+#Created on:4/19/2023                                                                                                              #
+####################################################################################################################################
+
+mysql_host=prd.mailchimp.com
+mysql_user=Mailchimp
+mysql_password=Mail2023!
+
+MAX_ATTEMPTS=10
+ATTEMPTS=0
+
+while true; do
+
+    # The below is the query to check the database log for unauthorized attempts
+    
+    UNAUTHORIZED_ATTEMPTS=$(mysql -h$mysql_host -u$mysql_user -p$mysql_password -e "SELECT COUNT(*) FROM mysql.general_log WHERE user_host NOT LIKE '%apphost%' AND command_type = 'Connect'" | tail -1)
+
+    # The below code will check the number of unauthorized attempts exceeding the maximum
+    
+    if [[ $UNAUTHORIZED_ATTEMPTS -gt 0 ]]; then
+        ATTEMPTS=$((ATTEMPTS + UNAUTHORIZED_ATTEMPTS))
+        
+        echo "We have detected unauthorized attempts. Current attempts: $ATTEMPTS"
+        
+        if [[ $ATTEMPTS -ge $MAX_ATTEMPTS ]]; then
+            
+            # trigger notification 
+            
+            echo "Maximum unauthorized attempts reached"|mail -s"Unauthorized attempts to accesson a database on $mysql_host " jdumpa@mailchimp.com
+            
+            break
+        fi
+    else
+        ATTEMPTS=0
+    fi
+
+    sleep 1
+done
